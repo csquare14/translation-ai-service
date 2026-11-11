@@ -3,20 +3,14 @@ from pathlib import Path
 
 DB_PATH = Path(__file__).resolve().parents[3] / "analytics.db"
 
+SCHEMA_PATH = Path(__file__).resolve().parent / "sql" / "security_findings.sql"
+
 
 def initialize_storage():
+    schema = SCHEMA_PATH.read_text(encoding="utf-8")
+
     with sqlite3.connect(DB_PATH) as connection:
-        connection.execute("""
-            CREATE TABLE IF NOT EXISTS security_findings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                rule_id TEXT NOT NULL,
-                rule_name TEXT NOT NULL,
-                severity TEXT NOT NULL,
-                description TEXT,
-                detected_value TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+        connection.executescript(schema)
 
 
 def save_findings(findings):
@@ -42,6 +36,7 @@ def get_findings():
 
     with sqlite3.connect(DB_PATH) as connection:
         connection.row_factory = sqlite3.Row
+
         cursor = connection.execute("""
             SELECT * FROM security_findings
             ORDER BY created_at DESC

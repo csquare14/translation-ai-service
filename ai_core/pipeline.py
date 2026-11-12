@@ -3,9 +3,11 @@ import boto3
 
 from .classifier import detect_domain
 from .evaluator import evaluate_translation
+from .glossary import apply_glossary
 from .translation_memory import (
     initialize_database,
     find_translation,
+    find_translation_auto,
     save_translation,
 )
 
@@ -29,8 +31,21 @@ def process_translation_pipeline(
     translation_source = "Amazon Translate"
 
     # Step 3: Check Translation Memory
-    # Exact lookup is possible when source language is selected.
-    if source_lang != "auto":
+    if source_lang == "auto":
+
+        cached_result = find_translation_auto(
+            text,
+            target_lang,
+            domain
+        )
+
+        if cached_result:
+            translated_text, detected_source = cached_result
+            translation_source = "Translation Memory"
+            print("Previous translation found. Reusing it.")
+
+    else:
+
         translated_text = find_translation(
             text,
             source_lang,
@@ -39,6 +54,7 @@ def process_translation_pipeline(
         )
 
         if translated_text:
+            detected_source = source_lang
             translation_source = "Translation Memory"
             print("Previous translation found. Reusing it.")
 
@@ -51,6 +67,7 @@ def process_translation_pipeline(
             "TargetLanguageCode": target_lang
         }
 
+        # Use AWS-managed terminology if configured
         if domain != "General":
             translate_kwargs["TerminologyNames"] = [
                 f"{domain}_Glossary"
@@ -63,7 +80,16 @@ def process_translation_pipeline(
         translated_text = translate_response["TranslatedText"]
         detected_source = translate_response["SourceLanguageCode"]
 
-        # Step 5: Save the new translation
+    # Step 5: Apply local domain glossary
+    translated_text = apply_glossary(
+        translated_text,
+        domain,
+        target_lang
+    )
+
+    # Step 6: Save new translation after glossary application
+    if translation_source == "Amazon Translate":
+
         save_translation(
             text,
             translated_text,
@@ -72,14 +98,14 @@ def process_translation_pipeline(
             domain
         )
 
-    # Step 6: Evaluate translation quality
+    # Step 7: Evaluate translation quality
     quality_report = evaluate_translation(
         text,
         translated_text,
         domain
     )
 
-    # Step 7: Return result
+    # Step 8: Return final result
     return {
         "source_language": detected_source,
         "target_language": target_lang,

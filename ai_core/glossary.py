@@ -1,3 +1,4 @@
+import re
 GLOSSARY = {
     "Legal": {
         "Agreement": "Contrat",
@@ -48,3 +49,24 @@ def add_term(domain: str, source_term: str, translated_term: str):
         GLOSSARY[domain] = {}
 
     GLOSSARY[domain][source_term] = translated_term
+def apply_glossary(
+    text: str,
+    domain: str,
+    target_lang: str
+) -> str:
+    """Apply domain-specific glossary translations."""
+
+    if target_lang != "fr":
+        return text
+
+    glossary = get_domain_glossary(domain)
+
+    for source_term, translated_term in glossary.items():
+        pattern = re.compile(
+            rf"\b{re.escape(source_term)}\b",
+            re.IGNORECASE
+        )
+
+        text = pattern.sub(translated_term, text)
+
+    return text

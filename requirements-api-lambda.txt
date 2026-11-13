@@ -1,0 +1,7 @@
+boto3
+python-dotenv
+fastapi>=0.115,<1
+pydantic>=2,<3
+python-multipart>=0.0.18
+PyJWT[crypto]>=2.10,<3
+mangum>=0.19,<1

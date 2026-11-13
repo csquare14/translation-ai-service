@@ -1,54 +1,25 @@
-
-import networkx as nx
+"""Configured application topology, not an AWS account inventory scan."""
+import os
 
 
 def build_resource_graph():
-    # Create a directed graph
-    cloud_graph = nx.DiGraph()
-
-    # Define AWS resources (nodes)
-    resources = [
-        ("INTERNET", "External Internet"),
-        ("SG-01", "Security Group"),
-        ("EC2-01", "Production EC2"),
-        ("IAM-01", "IAM Role"),
-        ("POLICY-01", "IAM Policy"),
-        ("S3-01", "Sensitive S3 Bucket"),
+    definitions = [
+        ("browser", "CloudQuery frontend", "Frontend", 70, 80),
+        ("clerk", "Clerk identity", "Identity", 350, 30),
+        ("gateway", "API Gateway", "API", 350, 200),
+        ("api", "translation-api", "Lambda", 650, 200),
+        ("bucket", os.getenv("S3_BUCKET_NAME", "Not configured"), "S3 bucket", 950, 200),
+        ("queue", "translation-jobs", "SQS", 950, 380),
+        ("worker", "translation-worker", "Lambda", 650, 500),
+        ("table", os.getenv("TRANSLATION_HISTORY_TABLE", "TranslationHistory"), "DynamoDB", 350, 500),
     ]
-
-    # Add resources to the graph
-    for resource_id, name in resources:
-        cloud_graph.add_node(
-            resource_id,
-            name=name
-        )
-
-    # Define relationships (edges)
-    relationships = [
-        ("INTERNET", "SG-01", "NETWORK_REACHABILITY"),
-        ("SG-01", "EC2-01", "ALLOWS_INGRESS"),
-        ("EC2-01", "IAM-01", "ASSUMES_ROLE"),
-        ("IAM-01", "POLICY-01", "HAS_POLICY"),
-        ("POLICY-01", "S3-01", "GRANTS_ACCESS"),
-    ]
-
-    # Add relationships to the graph
-    for source, target, relation in relationships:
-        cloud_graph.add_edge(
-            source,
-            target,
-            relationship=relation
-        )
-
-    return cloud_graph
-
-
-if __name__ == "__main__":
-    cloud_graph = build_resource_graph()
-
-    print("Resources:", cloud_graph.number_of_nodes())
-    print("Relationships:", cloud_graph.number_of_edges())
-
-    print("\nGraph connections:")
-    for source, target, data in cloud_graph.edges(data=True):
-        print(source, "->", target, data["relationship"])
+    return {
+        "resources": [dict(id=i, name=n, type=t, x=x, y=y, risk="unknown",
+            note="Configured application component. Security posture requires separate verification.")
+            for i, n, t, x, y in definitions],
+        "edges": [["browser", "clerk", "sign-in"], ["browser", "gateway", "HTTPS + token"],
+            ["gateway", "api", "invoke"], ["api", "bucket", "upload"],
+            ["bucket", "queue", "object event"], ["queue", "worker", "process"],
+            ["worker", "bucket", "save results"], ["api", "table", "owned jobs"],
+            ["worker", "table", "status update"]],
+    }

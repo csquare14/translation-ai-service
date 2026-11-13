@@ -1,11 +1,19 @@
+import os
 import sqlite3
+import tempfile
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "translation_memory.db"
+default_db_path = (
+    Path(tempfile.gettempdir()) / "translation_memory.db"
+    if os.getenv("AWS_LAMBDA_FUNCTION_NAME")
+    else Path(__file__).parent / "translation_memory.db"
+)
+DB_PATH = Path(os.getenv("TRANSLATION_MEMORY_DB_PATH", str(default_db_path)))
 
 
 def initialize_database():
     """Create the translation memory table if it doesn't exist."""
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
 
     conn.execute("""

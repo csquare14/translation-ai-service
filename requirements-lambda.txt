@@ -1,0 +1,4 @@
+boto3
+python-dotenv
+google-genai>=3.2.0,<4
+pydantic>=2,<3

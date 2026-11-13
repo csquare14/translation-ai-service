@@ -1,18 +1,20 @@
 
-import boto3
+import warnings
+
+from botocore.exceptions import ClientError
+
+from backend.aws.clients import translate_client
 
 from .classifier import detect_domain
 from .evaluator import evaluate_translation
 from .glossary import apply_glossary
+from .gemini_translation import translate_with_gemini
 from .translation_memory import (
     initialize_database,
     find_translation,
     find_translation_auto,
     save_translation,
 )
-
-translate_client = boto3.client("translate")
-
 
 def process_translation_pipeline(
     text: str,
@@ -73,12 +75,36 @@ def process_translation_pipeline(
                 f"{domain}_Glossary"
             ]
 
-        translate_response = translate_client.translate_text(
-            **translate_kwargs
-        )
+        try:
+            try:
+                translate_response = translate_client.translate_text(**translate_kwargs)
+            except ClientError as error:
+                if (
+                    error.response["Error"]["Code"] != "ResourceNotFoundException"
+                    or "TerminologyNames" not in translate_kwargs
+                ):
+                    raise
 
-        translated_text = translate_response["TranslatedText"]
-        detected_source = translate_response["SourceLanguageCode"]
+                terminology_names = translate_kwargs.pop("TerminologyNames")
+                warnings.warn(
+                    f"AWS terminology {terminology_names} is unavailable. "
+                    "Continuing with standard translation and the local glossary.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                translate_response = translate_client.translate_text(**translate_kwargs)
+        except ClientError as error:
+            if error.response["Error"]["Code"] != "UnsupportedLanguagePairException":
+                raise
+            fallback = translate_with_gemini(
+                text, source_lang, target_lang, domain
+            )
+            translated_text = fallback.translated_text
+            detected_source = fallback.source_language
+            translation_source = "Gemini"
+        else:
+            translated_text = translate_response["TranslatedText"]
+            detected_source = translate_response["SourceLanguageCode"]
 
     # Step 5: Apply local domain glossary
     translated_text = apply_glossary(
@@ -88,7 +114,7 @@ def process_translation_pipeline(
     )
 
     # Step 6: Save new translation after glossary application
-    if translation_source == "Amazon Translate":
+    if translation_source != "Translation Memory":
 
         save_translation(
             text,

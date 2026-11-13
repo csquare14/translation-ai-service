@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; }
+    #error { color: #b42318; white-space: pre-wrap; }
+    #user { padding: 8px 0; }
+  </style>
+</head>
+<body>
+  <div id="sign-in"></div>
+  <div id="user"></div>
+  <p id="error" role="alert"></p>
+  <script>
+    const parentOrigin = document.referrer ? new URL(document.referrer).origin : location.origin;
+    const send = (type, extra = {}) => window.parent.postMessage(
+      { isStreamlitMessage: true, type, ...extra }, parentOrigin
+    );
+    let initializing = false;
+    let lastValue = "";
+    let signedIn = null;
+
+    function publish(value) {
+      const serialized = JSON.stringify(value);
+      if (serialized !== lastValue) {
+        lastValue = serialized;
+        send("streamlit:setComponentValue", { value, dataType: "json" });
+      }
+    }
+
+    function loadScript(url, key) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = url;
+        script.async = true;
+        script.crossOrigin = "anonymous";
+        if (key) script.dataset.clerkPublishableKey = key;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error("Clerk could not load. Check your connection and publishable key."));
+        document.head.appendChild(script);
+      });
+    }
+
+    async function syncSession() {
+      try {
+        const active = Boolean(window.Clerk.session);
+        if (signedIn !== active) {
+          signedIn = active;
+          if (active) {
+            window.Clerk.unmountSignIn(document.getElementById("sign-in"));
+            window.Clerk.mountUserButton(document.getElementById("user"));
+          } else {
+            window.Clerk.unmountUserButton(document.getElementById("user"));
+            window.Clerk.mountSignIn(document.getElementById("sign-in"));
+          }
+          send("streamlit:setFrameHeight", { height: active ? 70 : 650 });
+        }
+        publish({ token: active ? await window.Clerk.session.getToken() : null });
+        document.getElementById("error").textContent = "";
+      } catch (error) {
+        document.getElementById("error").textContent = "Your session could not refresh. Please sign in again.";
+        publish({ token: null });
+      }
+    }
+
+    window.addEventListener("message", async (event) => {
+      if (event.source !== window.parent || event.origin !== parentOrigin ||
+          event.data.type !== "streamlit:render" || initializing) return;
+      initializing = true;
+      try {
+        const key = event.data.args.publishable_key;
+        const domain = atob(key.split("_")[2]).replace(/\$$/, "");
+        if (!/^[a-zA-Z0-9.-]+$/.test(domain)) throw new Error("Invalid Clerk publishable key.");
+        await loadScript(`https://${domain}/npm/@clerk/ui@1/dist/ui.browser.js`);
+        await loadScript(`https://${domain}/npm/@clerk/clerk-js@6/dist/clerk.browser.js`, key);
+        await window.Clerk.load({ ui: { ClerkUI: window.__internal_ClerkUICtor } });
+        window.Clerk.addListener(() => { syncSession(); });
+        await syncSession();
+        setInterval(syncSession, 20000);
+      } catch (error) {
+        document.getElementById("error").textContent = error.message;
+        send("streamlit:setFrameHeight", { height: 120 });
+        publish({ token: null, error: "Clerk sign-in could not initialize." });
+      }
+    });
+    send("streamlit:componentReady", { apiVersion: 1 });
+    send("streamlit:setFrameHeight", { height: 650 });
+  </script>
+</body>
+</html>

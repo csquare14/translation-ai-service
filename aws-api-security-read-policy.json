@@ -1,0 +1,9 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "VerifyTranslationBucketSecurity",
+    "Effect": "Allow",
+    "Action": ["s3:GetEncryptionConfiguration", "s3:GetBucketPublicAccessBlock"],
+    "Resource": "arn:aws:s3:::translation-ai-documents-rashi-2026"
+  }]
+}

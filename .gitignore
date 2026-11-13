@@ -3,6 +3,8 @@ venv/
 
 # Environment variables
 .env
+.env.local
+.clerk/
 
 # Python cache files
 __pycache__/
@@ -10,3 +12,13 @@ __pycache__/
 
 # Local database
 ai_core/translation_memory.db
+
+ai_core/__pycache__/
+lambda-build-*/
+translation-worker-*.zip
+.local-data/
+.venv/
+node_modules/
+frontend/web/dist/
+*.tsbuildinfo
+dist/

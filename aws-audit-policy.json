@@ -1,0 +1,48 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "InspectTranslationQueues",
+      "Effect": "Allow",
+      "Action": ["sqs:GetQueueUrl", "sqs:GetQueueAttributes"],
+      "Resource": "arn:aws:sqs:ap-south-1:864981746659:translation-*"
+    },
+    {
+      "Sid": "InspectTranslationBucket",
+      "Effect": "Allow",
+      "Action": ["s3:GetBucketVersioning", "s3:GetBucketPolicy", "s3:GetEncryptionConfiguration", "s3:GetBucketPublicAccessBlock"],
+      "Resource": "arn:aws:s3:::translation-ai-documents-rashi-2026"
+    },
+    {
+      "Sid": "InspectTranslationTable",
+      "Effect": "Allow",
+      "Action": ["dynamodb:DescribeTable", "dynamodb:DescribeContinuousBackups"],
+      "Resource": "arn:aws:dynamodb:ap-south-1:864981746659:table/TranslationHistory"
+    },
+    {
+      "Sid": "InspectTranslationFunctions",
+      "Effect": "Allow",
+      "Action": "lambda:GetFunctionConfiguration",
+      "Resource": ["arn:aws:lambda:ap-south-1:864981746659:function:translation-api", "arn:aws:lambda:ap-south-1:864981746659:function:translation-worker"]
+    },
+    {
+      "Sid": "InspectEventMappings",
+      "Effect": "Allow",
+      "Action": "lambda:ListEventSourceMappings",
+      "Resource": "*",
+      "Condition": {"StringEquals": {"aws:RequestedRegion": "ap-south-1"}}
+    },
+    {
+      "Sid": "InspectWorkerRole",
+      "Effect": "Allow",
+      "Action": ["iam:ListAttachedRolePolicies", "iam:ListRolePolicies", "iam:GetRolePolicy"],
+      "Resource": "arn:aws:iam::864981746659:role/translation-worker-role"
+    },
+    {
+      "Sid": "ReadWorkerManagedPolicies",
+      "Effect": "Allow",
+      "Action": ["iam:GetPolicy", "iam:GetPolicyVersion"],
+      "Resource": ["arn:aws:iam::864981746659:policy/TranslationWorkerAccess", "arn:aws:iam::864981746659:policy/TranslationWorkerTranslateAccess", "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"]
+    }
+  ]
+}

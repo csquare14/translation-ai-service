@@ -1,6 +1,6 @@
-ALLOWED_STATUSES = {"pending", "processing", "completed", "failed"}
+ALLOWED_STATUSES = {"pending", "queued", "awaiting_upload", "processing", "completed", "failed"}
 
-ALLOWED_EXTENSIONS = {".txt", ".pdf", ".docx", ".doc", ".pptx", ".xlsx"}
+ALLOWED_EXTENSIONS = {".txt"}
 
 SECURITY_RULES = [
     {

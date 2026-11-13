@@ -1,5 +1,12 @@
-streamlit
+streamlit>=1.37
 boto3
 botocore
 pydantic
 python-dotenv
+google-genai>=3.2.0,<4
+fastapi>=0.115,<1
+uvicorn>=0.30,<1
+python-multipart>=0.0.18
+requests>=2.32,<3
+PyJWT[crypto]>=2.10,<3
+httpx>=0.28,<1
